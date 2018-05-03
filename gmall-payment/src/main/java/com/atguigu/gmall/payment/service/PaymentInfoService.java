@@ -11,4 +11,10 @@ public interface PaymentInfoService {
 
     public void sendPaymentResult(PaymentInfo paymentInfo,String result);
 
+    public boolean  checkPayment(PaymentInfo paymentInfoQuery);
+
+    public void closePayment(String orderId);
+
+    public void sendDelayPaymentResultCheck(String outTradeNo,int delaySec,int checkCount);
+
 }

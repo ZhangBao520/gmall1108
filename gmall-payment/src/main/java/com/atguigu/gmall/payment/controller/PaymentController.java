@@ -156,4 +156,17 @@ public class PaymentController {
         return "sent payment result";
 
     }
+
+    @RequestMapping("queryPaymentResult")
+    @ResponseBody
+    public String queryPaymentResult(HttpServletRequest request){
+        String orderId = request.getParameter("orderId");
+
+        PaymentInfo paymentInfo=new PaymentInfo();
+        paymentInfo.setOrderId(orderId);
+
+        boolean paymentResult = paymentInfoService.checkPayment(paymentInfo);
+
+        return ""+paymentResult;
+    }
 }
