@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<p th:text="${skuInfo.skuName}"></p>
+
+<table>
+<tr th:each="skuImage:${skuInfo.skuImageList}" th:if="${skuImage.id}>2">
+    <td th:text="${skuImage.imgName}">
+
+    </td>
+    <td th:text="${skuImage.imgUrl}">
+
+    </td>
+    <td th:text="(${skuImage.id}>2)?'是':'否'"></td>
+
+</tr>
+</table>
+</body>
+</html>
