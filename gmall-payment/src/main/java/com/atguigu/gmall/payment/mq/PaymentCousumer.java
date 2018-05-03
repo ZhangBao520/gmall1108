@@ -1,7 +1,7 @@
 package com.atguigu.gmall.payment.mq;
 
 import com.atguigu.gmall.bean.PaymentInfo;
-import com.atguigu.gmall.payment.service.PaymentInfoService;
+import com.atguigu.gmall.gmallusermanage.service.PaymentInfoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jms.annotation.JmsListener;
 import org.springframework.stereotype.Component;

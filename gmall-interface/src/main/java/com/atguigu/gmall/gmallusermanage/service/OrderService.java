@@ -23,5 +23,9 @@ public interface OrderService {
 
     public void sendOrderStatus(String orderId);
 
+    public void execExpiredOrder(OrderInfo orderInfo);
+
+    public List<OrderInfo> getExpiredOrderList();
+
 
 }

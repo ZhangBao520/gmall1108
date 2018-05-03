@@ -1,4 +1,4 @@
-package com.atguigu.gmall.payment.service;
+package com.atguigu.gmall.gmallusermanage.service;
 
 import com.atguigu.gmall.bean.PaymentInfo;
 

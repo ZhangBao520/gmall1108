@@ -1,5 +1,6 @@
 package com.atguigu.gmall.order.servier.impl;
 
+import com.alibaba.dubbo.config.annotation.Reference;
 import com.alibaba.dubbo.config.annotation.Service;
 
 import com.alibaba.fastjson.JSON;
@@ -8,12 +9,15 @@ import com.atguigu.gmall.bean.OrderInfo;
 import com.atguigu.gmall.bean.enums.ProcessStatus;
 import com.atguigu.gmall.config.RedisUtil;
 import com.atguigu.gmall.gmallusermanage.service.OrderService;
+import com.atguigu.gmall.gmallusermanage.service.PaymentInfoService;
 import com.atguigu.gmall.mq.ActiveMQUtil;
 import com.atguigu.gmall.order.mapper.OrderDetailMapper;
 import com.atguigu.gmall.order.mapper.OrderInfoMapper;
 import org.apache.activemq.command.ActiveMQTextMessage;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import redis.clients.jedis.Jedis;
+import tk.mybatis.mapper.entity.Example;
 
 import javax.jms.*;
 import javax.jms.Queue;
@@ -36,6 +40,9 @@ public class OrderServiceImpl implements OrderService {
 
     @Autowired
     ActiveMQUtil activeMQUtil;
+
+    @Reference
+    PaymentInfoService paymentService;
 
     public  void saveOrder(OrderInfo orderInfo){
 
@@ -181,5 +188,20 @@ public class OrderServiceImpl implements OrderService {
 
         return jsonString;
 
+    }
+
+    public List<OrderInfo> getExpiredOrderList(){
+        Example example=new Example(OrderInfo.class);
+        example.createCriteria().andLessThan("expireTime",new Date()).andEqualTo("processStatus",ProcessStatus.UNPAID);
+
+
+        List<OrderInfo> orderInfos = orderInfoMapper.selectByExample(example);
+        return orderInfos;
+    }
+
+    @Async
+    public void execExpiredOrder(OrderInfo orderInfo){
+        updateOrderStatus(orderInfo.getId(), ProcessStatus.CLOSED);
+        paymentService.closePayment(orderInfo.getId());
     }
 }
