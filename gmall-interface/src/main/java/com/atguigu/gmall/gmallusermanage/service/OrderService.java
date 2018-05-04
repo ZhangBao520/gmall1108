@@ -4,6 +4,7 @@ import com.atguigu.gmall.bean.OrderInfo;
 import com.atguigu.gmall.bean.enums.ProcessStatus;
 
 import java.util.List;
+import java.util.Map;
 
 public interface OrderService {
 
@@ -26,6 +27,13 @@ public interface OrderService {
     public void execExpiredOrder(OrderInfo orderInfo);
 
     public List<OrderInfo> getExpiredOrderList();
+
+    public String initWareOrder(String orderId);
+
+    public Map initWareOrder(OrderInfo orderInfo) ;
+
+
+    public List<OrderInfo> splitOrder(String orderId,String wareSkuMap);
 
 
 }

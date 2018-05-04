@@ -14,6 +14,7 @@ import com.atguigu.gmall.mq.ActiveMQUtil;
 import com.atguigu.gmall.order.mapper.OrderDetailMapper;
 import com.atguigu.gmall.order.mapper.OrderInfoMapper;
 import org.apache.activemq.command.ActiveMQTextMessage;
+import org.apache.commons.beanutils.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import redis.clients.jedis.Jedis;
@@ -21,6 +22,7 @@ import tk.mybatis.mapper.entity.Example;
 
 import javax.jms.*;
 import javax.jms.Queue;
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 
 /**
@@ -160,16 +162,24 @@ public class OrderServiceImpl implements OrderService {
     }
 
 
-    public String initWareOrder(String orderId){
-        OrderInfo orderInfo = getOrderInfo(  orderId);
+    public String initWareOrder(String orderId) {
+        OrderInfo orderInfo = getOrderInfo(orderId);
+        Map map = initWareOrder(orderInfo);
+        return JSON.toJSONString(map);
+    }
+
+
+    public Map  initWareOrder(OrderInfo orderInfo){
+
         Map map=new HashMap();
-        map.put("orderId",orderId);
+        map.put("orderId",orderInfo.getId());
         map.put("consignee", orderInfo.getConsignee());
         map.put("consigneeTel",orderInfo.getConsigneeTel());
         map.put("orderComment",orderInfo.getOrderComment());
         map.put("orderBody",orderInfo.getTradeBody());
         map.put("deliveryAddress",orderInfo.getDeliveryAddress());
         map.put("paymentWay","2");
+        map.put("wareId",orderInfo.getWareId());
 
         List detailList=new ArrayList();
         List<OrderDetail> orderDetailList = orderInfo.getOrderDetailList();
@@ -184,9 +194,7 @@ public class OrderServiceImpl implements OrderService {
 
         map.put("details",detailList);
 
-        String jsonString = JSON.toJSONString(map);
-
-        return jsonString;
+        return  map;
 
     }
 
@@ -203,5 +211,64 @@ public class OrderServiceImpl implements OrderService {
     public void execExpiredOrder(OrderInfo orderInfo){
         updateOrderStatus(orderInfo.getId(), ProcessStatus.CLOSED);
         paymentService.closePayment(orderInfo.getId());
+    }
+    public List<OrderInfo> splitOrder(String orderId,String wareSkuMap){
+        List<OrderInfo> subOrderInfoList=new ArrayList<>();
+
+        //1、先查询出原始订单信息
+        OrderInfo orderInfoOrigin = getOrderInfo(orderId);
+
+        //2 wareSkuMap 反序列化
+        List<Map> maps = JSON.parseArray(wareSkuMap, Map.class);
+
+        //3 遍历拆单方案  每个仓库与商品的对照 形成一个子订单
+        for (Map map : maps) {
+            String wareId = (String)map.get("wareId");
+            List<String> skuIds = (List)map.get("skuIds");
+            //4  生成子订单主表  从原始订单复制    新的订单号  父订单
+            OrderInfo subOrderInfo =new OrderInfo();
+
+            try {
+                BeanUtils.copyProperties(subOrderInfo,orderInfoOrigin);
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            } catch (InvocationTargetException e) {
+                e.printStackTrace();
+            }
+
+            subOrderInfo.setId(null);
+            subOrderInfo.setParentOrderId(orderInfoOrigin.getId());
+            subOrderInfo.setWareId(wareId);
+
+            //5 原始订单 订单主表中的订单状态标志为拆单
+
+
+            //6 明细表  根据拆单方案中的skuids进行匹配 到不同的子订单
+            List<OrderDetail> subOrderDetailList=new ArrayList<>();
+            List<OrderDetail> orderDetailList = orderInfoOrigin.getOrderDetailList();
+            for (String skuId : skuIds) {
+                for (OrderDetail orderDetail : orderDetailList) {
+                    if(skuId.equals(orderDetail.getSkuId())){
+                        orderDetail.setId(null);
+                        subOrderDetailList.add(orderDetail);
+                    }
+                }
+            }
+
+            subOrderInfo.setOrderDetailList(subOrderDetailList);
+
+            subOrderInfo.sumTotalAmount();
+            //7 保存到数据库中。
+            saveOrder(subOrderInfo);
+
+            subOrderInfoList.add(subOrderInfo);
+
+
+        }
+
+        updateOrderStatus(orderId,ProcessStatus.SPLIT);
+        //       8 返回一个 新生成的子订单列表
+        return subOrderInfoList;
+
     }
 }
